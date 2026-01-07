@@ -1,25 +1,18 @@
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, BitsAndBytesConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
 MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
 
-print(f"Loading {MODEL_NAME} to GPU (4-bit mode)...")
+# --- BAGIAN INI DIUBAH UNTUK CPU DEPLOYMENT ---
+print(f"Loading {MODEL_NAME} to CPU (Standard Mode)...")
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-# Konfigurasi Kompresi 4-bit (Hemat VRAM banget!)
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_compute_dtype=torch.float16,
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_quant_type="nf4"
-)
-
-# Load Model dengan Config di atas
+# Kita HAPUS config 4-bit (bitsandbytes) karena CPU Hugging Face punya RAM 16GB (Cukup banget!)
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
-    quantization_config=bnb_config, # <--- Masukkan config 4-bit
-    device_map="auto",              # Biarkan library atur posisi GPU otomatis
+    device_map="cpu",       # Paksa ke CPU
+    torch_dtype=torch.float32, # Pakai float32 biar stabil di CPU
     low_cpu_mem_usage=True,
     trust_remote_code=True
 )
