@@ -1,8 +1,22 @@
-fastapi
-uvicorn
-langchain
-faiss-cpu
-sentence-transformers
-transformers
-torch
-pypdf
+# Web API
+fastapi==0.110.0
+uvicorn==0.29.0
+
+# LangChain core
+langchain==0.2.14
+langchain-community==0.2.12
+langchain-huggingface==0.0.3
+
+# Vector database
+faiss-cpu==1.8.0
+
+# Embeddings
+sentence-transformers==2.7.0
+
+# LLM
+transformers==4.41.2
+torch==2.3.0
+accelerate==0.31.0
+
+# PDF loader
+pypdf==4.2.0
