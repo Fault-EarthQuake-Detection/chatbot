@@ -1,22 +1,30 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+
 # Web API
 fastapi==0.110.0
 uvicorn==0.29.0
 
-# LangChain core
+# LangChain & RAG
 langchain==0.2.14
 langchain-community==0.2.12
 langchain-huggingface==0.0.3
+langchain-text-splitters==0.2.4
 
-# Vector database
+# Vector Database
+# Kita tetap pakai cpu version untuk FAISS karena embedding kita jalankan di CPU (hemat VRAM)
 faiss-cpu==1.8.0
 
-# Embeddings
-sentence-transformers==2.7.0
-
-# LLM
-transformers==4.41.2
-torch==2.3.0
-accelerate==0.31.0
-
-# PDF loader
+# PDF Handling
 pypdf==4.2.0
+cryptography==46.0.3
+
+# AI Models & GPU Optimization
+transformers==4.41.2
+sentence-transformers==2.7.0
+accelerate==0.31.0
+bitsandbytes==0.49.0
+
+# PyTorch (GPU Version)
+torch==2.5.1+cu121
+torchvision==0.20.1+cu121
+torchaudio==2.5.1+cu121
