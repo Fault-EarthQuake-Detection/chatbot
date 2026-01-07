@@ -1,20 +1,19 @@
 from pathlib import Path
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-# Import fungsi generate_answer yang sudah diperbaiki
-from app.llm import generate_answer  
+from app.llm import generate_answer
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "vectorstore"
 
-print("Loading Embedding Model to CPU...") # Ubah log jadi CPU
+# Inisialisasi Model Embedding (Mode Silent)
 embeddings = HuggingFaceEmbeddings(
     model_name="intfloat/multilingual-e5-small",
-    model_kwargs={'device': 'cpu'},         # <--- GANTI 'cuda' JADI 'cpu'
+    model_kwargs={'device': 'cpu'}, 
     encode_kwargs={'normalize_embeddings': True}
 )
 
-print("Loading Vector Database...")
+# Load Vector Database
 db = FAISS.load_local(
     str(DB_PATH), 
     embeddings, 
@@ -22,25 +21,21 @@ db = FAISS.load_local(
 )
 
 def answer_question(question: str) -> str:
+    """
+    Mencari konteks relevan dari vector store dan mengirimkannya ke LLM.
+    Output langsung berupa string jawaban bersih.
+    """
     # 1. Cari dokumen relevan (Retrieval)
-    print(f"\n🔍 Mencari konteks untuk: '{question}'...")
     docs = db.similarity_search(question, k=3)
 
+    # Jika tidak ada dokumen yang relevan
     if not docs:
-        print("❌ Tidak ada dokumen yang cocok ditemukan.")
-        return "Maaf, saya tidak menemukan informasi terkait di database jurnal."
+        return "Maaf, informasi terkait tidak ditemukan dalam referensi jurnal yang tersedia."
 
-    # Debug: Tampilkan judul dokumen yang ketemu
-    print(f"✅ Ditemukan {len(docs)} potongan konteks.")
-    for i, d in enumerate(docs):
-        # Preview sedikit isinya biar yakin
-        print(f"   - Dokumen {i+1}: {d.page_content[:100].replace(chr(10), ' ')}...")
-
-    # 2. Gabungkan konten dokumen jadi satu string teks
+    # 2. Gabungkan konten dokumen jadi satu string teks konteks
     context_text = "\n\n".join([d.page_content for d in docs])
 
-    # 3. Panggil LLM
-    print("🤖 Sedang berpikir...")
+    # 3. Panggil LLM untuk generate jawaban
     final_answer = generate_answer(question, context_text)
     
     return final_answer
