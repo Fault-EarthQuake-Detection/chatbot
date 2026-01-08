@@ -17,7 +17,7 @@ app = FastAPI(title="GeoValid Chatbot")
 class Query(BaseModel):
     question: str
 
-@app.post("/chat")
+@app.post("/chatbot-RAG")
 def chat(query: Query):
     q = query.question
 
