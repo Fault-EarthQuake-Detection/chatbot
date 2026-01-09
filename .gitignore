@@ -10,3 +10,5 @@ __pycache__/
 
 # HuggingFace / Transformers cache (opsional)
 .cache/
+
+.env/

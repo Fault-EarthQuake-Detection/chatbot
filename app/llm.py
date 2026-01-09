@@ -1,55 +1,68 @@
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+import os
+import warnings
+# 1. Bungkam pesan warning (tulisan merah) agar terminal bersih
+warnings.filterwarnings("ignore")
 
-MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
+import google.generativeai as genai
+from dotenv import load_dotenv
 
-# --- BAGIAN INI DIUBAH UNTUK CPU DEPLOYMENT ---
-print(f"Loading {MODEL_NAME} to CPU (Standard Mode)...")
+# Load API Key
+load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+if not GOOGLE_API_KEY:
+    print("⚠️ WARNING: GOOGLE_API_KEY belum diset!")
+else:
+    genai.configure(api_key=GOOGLE_API_KEY)
 
-# Kita HAPUS config 4-bit (bitsandbytes) karena CPU Hugging Face punya RAM 16GB (Cukup banget!)
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_NAME,
-    device_map="cpu",       # Paksa ke CPU
-    torch_dtype=torch.float32, # Pakai float32 biar stabil di CPU
-    low_cpu_mem_usage=True,
-    trust_remote_code=True
+# --- SYSTEM INSTRUCTION (OTAK CHATBOT) ---
+SYSTEM_PROMPT = """
+PERAN:
+Kamu adalah "GeoValid Bot", asisten AI yang cerdas, ramah, dan spesialis dalam topik GEOLOGI, khususnya GEMPA BUMI dan SESAR/PATAHAN.
+
+BATASAN TOPIK:
+1. Kamu HANYA boleh menjawab pertanyaan yang berkaitan dengan gempa bumi, sesar/patahan, tektonik lempeng, dan mitigasi bencana geologi.
+2. Jika user bertanya di luar topik tersebut (misal: resep masakan, coding, politik, agama), tolaklah dengan sopan.
+   Contoh penolakan: "Maaf, saya tidak memiliki data di luar seputar gempa dan sesar. Silakan tanya saya tentang fenomena geologi tersebut."
+
+RESPON IDENTITAS & BASA-BASI:
+1. Jika user bertanya "Kamu siapa?", "Siapa kamu?", atau sejenisnya:
+   Jawablah bahwa kamu adalah chatbot edukasi yang didedikasikan untuk membahas informasi seputar gempa dan sesar/patahan untuk membantu pemahaman mitigasi bencana.
+2. Jika user mengucapkan "Terima kasih", "Makasih", "Thanks":
+   Jawablah dengan "Sama-sama!" dan tambahkan kalimat penyemangat agar user terus belajar tentang geologi.
+
+GAYA BAHASA:
+- Gunakan Bahasa Indonesia yang baik, namun tetap luwes dan tidak kaku.
+- Jawaban harus INFORMATIF (berikan penjelasan singkat tapi padat).
+- Jangan berhalusinasi (mengarang data). Jika tidak tahu faktanya, katakan tidak tahu.
+"""
+
+# Konfigurasi Model (Agar jawaban konsisten)
+generation_config = {
+    "temperature": 0.3,
+    "top_p": 0.95,
+    "top_k": 64,
+    "max_output_tokens": 2048,
+}
+
+# Inisialisasi Model (Pakai Library Stabil)
+model = genai.GenerativeModel(
+    model_name="gemini-2.5-flash",
+    generation_config=generation_config,
+    system_instruction=SYSTEM_PROMPT
 )
 
-llm_pipeline = pipeline(
-    "text-generation",
-    model=model,
-    tokenizer=tokenizer,
-    max_new_tokens=512,
-    do_sample=True,
-    temperature=0.3,
-    top_k=50,
-    top_p=0.95,
-    repetition_penalty=1.1
-)
+def generate_response(user_question: str) -> str:
+    """
+    Fungsi mengirim chat ke Gemini
+    """
+    if not GOOGLE_API_KEY:
+        return "Maaf, Server belum dikonfigurasi (API Key missing)."
 
-def generate_answer(question: str, context: str) -> str:
-    messages = [
-        {"role": "system", "content": (
-            "Kamu adalah asisten ahli geologi yang membantu menjawab pertanyaan berdasarkan jurnal ilmiah. "
-            "PENTING: Jawablah hanya dalam BAHASA INDONESIA. "
-            "Gunakan informasi dari 'Konteks' di bawah ini untuk menjawab. "
-            "Jika jawaban tidak ada di konteks, katakan jujur 'Informasi tidak ditemukan di jurnal'."
-        )},
-        {"role": "user", "content": f"Konteks:\n{context}\n\nPertanyaan: {question}"}
-    ]
-    
-    prompt = tokenizer.apply_chat_template(
-        messages, 
-        tokenize=False, 
-        add_generation_prompt=True
-    )
-
-    outputs = llm_pipeline(prompt)
-    raw_output = outputs[0]["generated_text"]
-    
-    if "<|im_start|>assistant" in raw_output:
-        return raw_output.split("<|im_start|>assistant")[-1].strip()
-    
-    return raw_output.replace(prompt, "").strip()
+    try:
+        # Kirim prompt
+        response = model.generate_content(user_question)
+        return response.text
+    except Exception as e:
+        # Jika error, tampilkan pesannya
+        return f"Maaf, terjadi kesalahan pada sistem AI: {str(e)}"
